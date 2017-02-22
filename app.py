@@ -28,6 +28,11 @@ def split_pr_url(url):
     return repo_name, pr_number
 
 
+@app.route("/healthcheck")
+def healthcheck():
+    return 'ok'
+
+
 @webhook.hook('pull_request')
 def on_pull_request(data):
     manager = imhotep.repomanagers.RepoManager(
