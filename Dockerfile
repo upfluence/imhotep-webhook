@@ -5,8 +5,8 @@ ADD . /app
 
 WORKDIR /app
 
-RUN apk update && apk add bash curl ca-certificates git openssh bzip2 python \
-  python-dev ruby ruby-dev ruby-io-console ruby-bigdecimal && \
+RUN apk update && apk add build-base bash curl ca-certificates git openssh bzip2 python \
+  python-dev ruby ruby-dev ruby-io-console ruby-bigdecimal ruby-json && \
   ln -s /usr/include/ruby2.3.1 /usr/include/ruby && \
   echo 'gem: --no-rdoc --no-ri' >> /etc/gemrc && \
   gem install rake bundler rubocop && \

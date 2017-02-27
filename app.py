@@ -2,20 +2,18 @@ import os
 import flask
 import github_webhook
 import imhotep.app
-import imhotep.http
 import imhotep.shas
 import imhotep.repomanagers
 import logging
 import rubocop
+import github.MainClass
 
 app = flask.Flask(__name__)
 webhook = github_webhook.Webhook(app)
 
-github_username = os.environ.get('GITHUB_USERNAME')
-github_password = os.environ.get('GITHUB_PASSWORD')
+github_token = os.environ.get('GITHUB_PASSWORD')
+github_requester = github.MainClass.Github(github_token)
 
-github_requester = imhotep.http.BasicAuthRequester(
-    github_username, github_password)
 
 logging.getLogger().setLevel(logging.DEBUG)
 
