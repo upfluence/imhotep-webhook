@@ -5,8 +5,11 @@ ADD . /app
 
 WORKDIR /app
 
-RUN apk update && apk add build-base bash curl ca-certificates git openssh bzip2 python \
-  python-dev ruby ruby-dev ruby-io-console ruby-bigdecimal ruby-json && \
+RUN apk update && apk add build-base bash curl ca-certificates git openssh \
+  bzip2 python go python-dev ruby ruby-dev ruby-io-console ruby-bigdecimal \
+  ruby-json nodejs && \
+  go get -u github.com/golang/lint/golint && \
+  npm install -g eslint eslint-plugin-ember-suave && \
   ln -s /usr/include/ruby2.3.1 /usr/include/ruby && \
   echo 'gem: --no-rdoc --no-ri' >> /etc/gemrc && \
   gem install rake bundler rubocop && \

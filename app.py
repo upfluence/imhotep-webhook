@@ -5,7 +5,9 @@ import imhotep.app
 import imhotep.shas
 import imhotep.repomanagers
 import logging
-import rubocop
+from linter.rubocop.linter import Linter as RubocopLinter
+from linter.golint.linter import Linter as GolintLinter
+from linter.eslint.linter import Linter as EslintLinter
 import github.MainClass
 
 app = flask.Flask(__name__)
@@ -34,7 +36,10 @@ def healthcheck():
 @webhook.hook('pull_request')
 def on_pull_request(data):
     manager = imhotep.repomanagers.RepoManager(
-        tools=[rubocop.RubyLintLinter(imhotep.app.run)],
+        tools=[
+            RubocopLinter(imhotep.app.run),
+            GolintLinter(imhotep.app.run),
+            EslintLinter(imhotep.app.run)],
         executor=imhotep.app.run, cache_directory='/tmp',
         authenticated=True)
 
