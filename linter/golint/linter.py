@@ -11,9 +11,12 @@ class Linter(Tool):
     def process_line(self, dirname, line):
         match = self.response_format.search(line)
 
+        if not match:
+            return None
+
         if len(self.filenames) != 0:
             if match.group('filename') not in self.filenames:
-                return
+                return None
         filename, line, messages = match.groups()
 
         if re.blacklist.search(messages):
