@@ -12,3 +12,6 @@ Metrics/MethodLength:
 
 Performance/RedundantMerge:
   Enabled: false
+
+Style/RaiseArgs
+  EnforcedStyle: compact
