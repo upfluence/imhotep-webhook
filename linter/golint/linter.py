@@ -19,7 +19,7 @@ class Linter(Tool):
                 return None
         filename, line, messages = match.groups()
 
-        if re.blacklist.search(messages):
+        if self.blacklist.search(messages):
             return None
 
         return filename, line, messages

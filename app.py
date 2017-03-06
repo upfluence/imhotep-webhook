@@ -37,7 +37,8 @@ def split_pr_url(url):
 
 
 def pr_as_issue(data):
-    repo, pr_number = split_pr_url(data['pull_request']['url'])
+    repo, pr_number = split_pr_url(
+        data.get('pull_request', data['issue'])['url'])
     org, repo = repo.split('/')
 
     return github_client.get_organization(org).get_repo(repo).get_issue(
@@ -49,13 +50,13 @@ def get_labels(data):
 
 
 def add_label_to_pr(data, label):
-    pr_as_issue.add_to_labels(label)
+    pr_as_issue(data).add_to_labels(label)
 
 
 def delete_review_labels(data):
     for label in get_labels(data):
         if label.name.startswith('reviewed/'):
-            pr_as_issue(data).delete_label(label)
+            pr_as_issue(data).remove_from_labels(label)
 
 
 @app.route("/healthcheck")
@@ -67,9 +68,9 @@ def healthcheck():
 def on_pull_request_review(data):
     delete_review_labels(data)
     if data['review']['state'] == 'approved':
-        add_label_to_pr('reviewed/ready-to-merge')
+        add_label_to_pr(data, 'reviewed/ready-to-merge')
     else:
-        add_label_to_pr('reviewed/needs-work')
+        add_label_to_pr(data, 'reviewed/needs-work')
 
 
 @webhook.hook('issue_comment')
