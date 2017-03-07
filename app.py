@@ -77,9 +77,9 @@ def healthcheck():
 @webhook.hook('pull_request_review')
 def on_pull_request_review(data):
     if data['review']['state'] == 'approved':
-        set_review_label('ready-to-merge')
+        set_review_label(data, 'ready-to-merge')
     else:
-        set_review_label('needs-work')
+        set_review_label(data, 'needs-work')
 
 
 @webhook.hook('issue_comment')
@@ -90,7 +90,7 @@ def on_issue_comment(data):
     repo, pr_number = split_pr_url(data['issue']['url'])
 
     if 'lgtm' in data['comment']['body'].lower():
-        set_review_label('ready-to-merge')
+        set_review_label(data, 'ready-to-merge')
 
 
 @webhook.hook('pull_request')
@@ -109,11 +109,11 @@ def on_pull_request(data):
 
     if '[wip]' in data['pull_request']['title'].lower() and \
        not data['action'] in ['labeled', 'unlabeled']:
-        set_review_label('work-in-progress')
+        set_review_label(data, 'work-in-progress')
         return
 
     if data['action'] == 'synchronized' or data['action'] == 'opened':
-        set_review_label('needs-review')
+        set_review_label(data, 'needs-review')
         build_imhotep().invoke()
     elif data['action'] == 'edited':
         review_label = None
@@ -123,7 +123,7 @@ def on_pull_request(data):
                 review_label = label.name
 
         if not review_label or review_label == 'reviewed/work-in-progress':
-            set_review_label('needs-review')
+            set_review_label(data, 'needs-review')
             build_imhotep().invoke()
 
 
