@@ -38,7 +38,7 @@ def split_pr_url(url):
 
 def pr_as_issue(data):
     repo, pr_number = split_pr_url(
-        data.get('pull_request', data['issue'])['url'])
+        data.get('pull_request', data.get('issue'))['url'])
     org, repo = repo.split('/')
 
     return github_client.get_organization(org).get_repo(repo).get_issue(
@@ -53,10 +53,20 @@ def add_label_to_pr(data, label):
     pr_as_issue(data).add_to_labels(label)
 
 
-def delete_review_labels(data):
+def set_review_label(data, target):
+    found = False
+    target = 'reviewed/{}'.format(target)
+
     for label in get_labels(data):
-        if label.name.startswith('reviewed/'):
-            pr_as_issue(data).remove_from_labels(label)
+        if label.name.startswith('reviewed/') and not \
+           label.name.endswith('delayed'):
+            if label == target:
+                found = True
+            else:
+                pr_as_issue(data).remove_from_labels(label)
+
+    if not found:
+        add_label_to_pr(data, target)
 
 
 @app.route("/healthcheck")
@@ -66,11 +76,10 @@ def healthcheck():
 
 @webhook.hook('pull_request_review')
 def on_pull_request_review(data):
-    delete_review_labels(data)
     if data['review']['state'] == 'approved':
-        add_label_to_pr(data, 'reviewed/ready-to-merge')
+        set_review_label('ready-to-merge')
     else:
-        add_label_to_pr(data, 'reviewed/needs-work')
+        set_review_label('needs-work')
 
 
 @webhook.hook('issue_comment')
@@ -81,31 +90,31 @@ def on_issue_comment(data):
     repo, pr_number = split_pr_url(data['issue']['url'])
 
     if 'lgtm' in data['comment']['body'].lower():
-        delete_review_labels(data)
-        add_label_to_pr('reviewed/ready-to-merge')
+        set_review_label('ready-to-merge')
 
 
 @webhook.hook('pull_request')
 def on_pull_request(data):
-    repo, pr_number = split_pr_url(data['pull_request']['url'])
+    def build_imhotep():
+        repo, pr_number = split_pr_url(data['pull_request']['url'])
+        logging.info([repo, pr_number])
 
-    logging.info([repo, pr_number])
-
-    if '[wip]' in data['pull_request']['title'].lower():
-        delete_review_labels(data)
-        add_label_to_pr(data, 'reviewed/work-in-progress')
-        return
-
-    if data['action'] == 'synchronized' or data['action'] == 'opened':
-        delete_review_labels(data)
-        add_label_to_pr(data, 'reviewed/needs-review')
         pr_info = imhotep.shas.get_pr_info(
             github_client, repo, pr_number).to_commit_info()
 
-        imhotep.app.Imhotep(
+        return imhotep.app.Imhotep(
             requester=github_client, repo_manager=manager,
             commit_info=pr_info, shallow_clone=False, pr_number=pr_number,
-            repo_name=repo).invoke()
+            repo_name=repo)
+
+    if '[wip]' in data['pull_request']['title'].lower() and \
+       not data['action'] in ['labeled', 'unlabeled']:
+        set_review_label('work-in-progress')
+        return
+
+    if data['action'] == 'synchronized' or data['action'] == 'opened':
+        set_review_label('needs-review')
+        build_imhotep().invoke()
     elif data['action'] == 'edited':
         review_label = None
 
@@ -113,12 +122,9 @@ def on_pull_request(data):
             if label.name.startswith('reviewed/'):
                 review_label = label.name
 
-        if not review_label:
-            add_label_to_pr(data, 'reviewed/needs-review')
-        elif review_label == 'reviewed/work-in-progress':
-            delete_review_labels(data)
-            add_label_to_pr(data, 'reviewed/needs-review')
-
+        if not review_label or review_label == 'reviewed/work-in-progress':
+            set_review_label('needs-review')
+            build_imhotep().invoke()
 
 
 if __name__ == "__main__":
