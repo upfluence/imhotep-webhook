@@ -112,7 +112,7 @@ def on_pull_request(data):
         set_review_label(data, 'work-in-progress')
         return
 
-    if data['action'] == 'synchronized' or data['action'] == 'opened':
+    if data['action'] == 'synchronize' or data['action'] == 'opened':
         set_review_label(data, 'needs-review')
         build_imhotep().invoke()
     elif data['action'] == 'edited':
