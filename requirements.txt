@@ -1,4 +1,5 @@
 git+https://github.com/upfluence/imhotep
 github_webhook
 gunicorn
+requests
 PyGithub

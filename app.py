@@ -5,6 +5,7 @@ import imhotep.app
 import imhotep.shas
 import imhotep.repomanagers
 import logging
+import requests
 from linter.rubocop.linter import Linter as RubocopLinter
 from linter.golint.linter import Linter as GolintLinter
 from linter.eslint.linter import Linter as EslintLinter
@@ -93,19 +94,29 @@ def on_issue_comment(data):
         set_review_label(data, 'ready-to-merge')
 
 
+def deploy_frontend(repo, pr_info):
+    if os.environ.get('FRONTEND_DEPLOYER_URL', False) and \
+       pr_info.base_ref in ['master', 'edge', 'staging']:
+        requests.posts(
+            '{}/deploy'.format(os.environ.get('FRONTEND_DEPLOYER_URL')),
+            data={
+                'env': pr_info.base_ref,
+                'repository': repo.split('/')[-1],
+                'ref': pr_info.head_ref})
+
+
 @webhook.hook('pull_request')
 def on_pull_request(data):
-    def build_imhotep():
-        repo, pr_number = split_pr_url(data['pull_request']['url'])
-        logging.info([repo, pr_number])
+    repo, pr_number = split_pr_url(data['pull_request']['url'])
+    logging.info([repo, pr_number])
 
-        pr_info = imhotep.shas.get_pr_info(
-            github_client, repo, pr_number).to_commit_info()
+    pr_info = imhotep.shas.get_pr_info(
+        github_client, repo, pr_number).to_commit_info()
 
-        return imhotep.app.Imhotep(
-            requester=github_client, repo_manager=manager,
-            commit_info=pr_info, shallow_clone=False, pr_number=pr_number,
-            repo_name=repo)
+    imh = imhotep.app.Imhotep(
+        requester=github_client, repo_manager=manager,
+        commit_info=pr_info, shallow_clone=False, pr_number=pr_number,
+        repo_name=repo)
 
     if '[wip]' in data['pull_request']['title'].lower() and \
        not data['action'] in ['labeled', 'unlabeled']:
@@ -114,7 +125,11 @@ def on_pull_request(data):
 
     if data['action'] == 'synchronize' or data['action'] == 'opened':
         set_review_label(data, 'needs-review')
-        build_imhotep().invoke()
+
+        if repo.endswith('-web'):
+            deploy_frontend(repo, pr_info)
+
+        imh.invoke()
     elif data['action'] == 'edited':
         review_label = None
 
@@ -124,7 +139,7 @@ def on_pull_request(data):
 
         if not review_label or review_label == 'reviewed/work-in-progress':
             set_review_label(data, 'needs-review')
-            build_imhotep().invoke()
+            imh.invoke()
 
 
 if __name__ == "__main__":
