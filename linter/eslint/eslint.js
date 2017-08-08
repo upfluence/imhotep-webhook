@@ -4,6 +4,7 @@ module.exports = {
     'plugin:ember-suave/recommended'
   ],
   rules: {
-    'ember-suave/no-direct-property-access': 'off'
+    'ember-suave/no-direct-property-access': 'off',
+    'curly': 'off'
   }
 };
