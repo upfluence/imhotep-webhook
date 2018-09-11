@@ -8,6 +8,7 @@ import logging
 import requests
 from linter.rubocop.linter import Linter as RubocopLinter
 from linter.golint.linter import Linter as GolintLinter
+from linter.megacheck.linter import Linter as MegacheckLinter
 from linter.eslint.linter import Linter as EslintLinter
 import github.MainClass
 
@@ -22,11 +23,12 @@ manager = imhotep.repomanagers.RepoManager(
     tools=[
         RubocopLinter(imhotep.app.run),
         GolintLinter(imhotep.app.run),
+        MegacheckLinter(imhotep.app.run),
         EslintLinter(imhotep.app.run)],
     executor=imhotep.app.run, cache_directory='/tmp',
     authenticated=True)
 
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
 
 def split_pr_url(url):
@@ -95,14 +97,19 @@ def on_issue_comment(data):
 
 
 def deploy_frontend(repo, pr_info):
+    logging.warn(
+        'Deploy frontend: {} => {}:{} [{}]'.format(
+            pr_info.head_ref, repo, pr_info.base_ref,
+            os.environ.get('FRONTEND_DEPLOYER_URL', '')))
+
     if os.environ.get('FRONTEND_DEPLOYER_URL', False) and \
        pr_info.base_ref in ['master', 'edge', 'staging']:
-        requests.posts(
+        requests.post(
             '{}/deploy'.format(os.environ.get('FRONTEND_DEPLOYER_URL')),
             data={
                 'env': pr_info.base_ref,
                 'repository': repo.split('/')[-1],
-                'ref': pr_info.head_ref})
+                'ref': 'heads/{}'.format(pr_info.head_ref)})
 
 
 @webhook.hook('pull_request')
@@ -111,11 +118,12 @@ def on_pull_request(data):
     logging.info([repo, pr_number])
 
     pr_info = imhotep.shas.get_pr_info(
-        github_client, repo, pr_number).to_commit_info()
+        github_client, repo, pr_number)
+    commit_info = pr_info.to_commit_info()
 
     imh = imhotep.app.Imhotep(
         requester=github_client, repo_manager=manager,
-        commit_info=pr_info, shallow_clone=False, pr_number=pr_number,
+        commit_info=commit_info, shallow_clone=False, pr_number=pr_number,
         repo_name=repo)
 
     if '[wip]' in data['pull_request']['title'].lower() and \

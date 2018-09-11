@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM alpine:3.7
 MAINTAINER Alexis Montagne <alexis.montagne@gmail.com>
 
 ADD . /app
@@ -11,7 +11,8 @@ ENV GOPATH=/gopath \
 RUN apk add --update build-base bash curl ca-certificates git openssh \
   bzip2 python go python-dev ruby ruby-dev ruby-io-console ruby-bigdecimal \
   ruby-json nodejs findutils && mkdir /gopath && \
-  go get -u github.com/golang/lint/golint && \
+  go get -u golang.org/x/lint/golint && \
+  go get -u  honnef.co/go/tools/cmd/megacheck && \
   npm install -g eslint eslint-plugin-ember-suave && \
   ln -s /usr/include/ruby2.3.1 /usr/include/ruby && \
   echo 'gem: --no-rdoc --no-ri' >> /etc/gemrc && \
